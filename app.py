@@ -261,6 +261,7 @@ def main():
                 shutil.rmtree(VECTORSTORE_PATH)
                 st.cache_resource.clear()
                 reset_singletons()
+                st.session_state.models_warmed = False
                 st.rerun()
 
         if st.button("🗑️ 清空聊天历史", use_container_width=True):
