@@ -1,0 +1,34 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip list *)",
+      "Bash(D:/RAG/.venv/Scripts/python -m pip list)",
+      "Bash(D:/RAG/.venv/Scripts/python -c \"import py_compile; py_compile.compile\\('utils.py', doraise=True\\); print\\('utils.py OK'\\)\")",
+      "Bash(D:/RAG/.venv/Scripts/python -c \"import py_compile; py_compile.compile\\('vectorstore.py', doraise=True\\); print\\('vectorstore.py OK'\\)\")",
+      "Bash(D:/RAG/.venv/Scripts/python -c \"import py_compile; py_compile.compile\\('retrievers.py', doraise=True\\); print\\('retrievers.py OK'\\)\")",
+      "Bash(D:/RAG/.venv/Scripts/python -c \"import py_compile; py_compile.compile\\('qa_chain.py', doraise=True\\); print\\('qa_chain.py OK'\\)\")",
+      "Bash(D:/RAG/.venv/Scripts/python -c \"import py_compile; py_compile.compile\\('app.py', doraise=True\\); print\\('app.py OK'\\)\")",
+      "Bash(D:/RAG/.venv/Scripts/streamlit run *)",
+      "Bash(python *)",
+      "Bash(pip show *)",
+      "Bash(python3 *)",
+      "Bash(/c/Python314/python *)",
+      "Bash(pip3 list *)",
+      "Bash(D:/RAG/.venv/Scripts/python -c ' *)",
+      "Bash(rm -rf vectorstore)",
+      "Bash(D:/RAG/.venv/Scripts/python main.py *)",
+      "Bash(/d/RAG/.venv/Scripts/python -c \"import langchain_community; print\\('langchain_community:', langchain_community.__version__\\)\")",
+      "Bash(/d/RAG/.venv/Scripts/python -c \"import langchain_core; print\\('langchain_core:', langchain_core.__version__\\)\")",
+      "Bash(/d/RAG/.venv/Scripts/python -c \"import langchain_classic; print\\('langchain_classic:', langchain_classic.__version__\\)\")",
+      "Bash(/d/RAG/.venv/Scripts/python -c \"import dashscope; print\\('dashscope:', dashscope.__version__\\)\")",
+      "Bash(/d/RAG/.venv/Scripts/python -c \"import streamlit; print\\('streamlit:', streamlit.__version__\\)\")",
+      "Bash(/d/RAG/.venv/Scripts/python *)",
+      "Bash(.venv/Scripts/python -c \"from langchain_community.chat_models.tongyi import ChatTongyi; print\\('_stream' in dir\\(ChatTongyi\\)\\); print\\('_astream' in dir\\(ChatTongyi\\)\\)\")",
+      "Skill(superpowers:writing-plans)",
+      "Skill(superpowers:subagent-driven-development)",
+      "Bash(git init *)",
+      "Bash(git add *)",
+      "Bash(git commit *)"
+    ]
+  }
+}
