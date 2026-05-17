@@ -18,9 +18,20 @@ No test suite or linting is configured.
 
 RAG pipeline: document ingestion → text chunking → embedding → FAISS vector store → hybrid retrieval → LLM answer generation.
 
+### Two query paths (important)
+
+There are two separate implementations that both build a `HybridRetriever` identically — if you change retriever construction, update both:
+
+- **CLI** (`main.py` → `qa_chain.py:build_qa_chain()`): wraps everything in LangChain's `RetrievalQA` chain. Non-streaming.
+- **Streamlit** (`app.py` → `qa_chain.py:stream_qa()`): builds retriever, calls `retriever.invoke()`, then streams tokens via `llm.stream(prompt_text)`. Written this way because `RetrievalQA` doesn't support real streaming.
+
+The `chunks` list (list of `Document`) must be carried alongside the vectorstore — BM25 is built from it via `BM25Retriever.from_documents(chunks)`, it cannot be derived from the FAISS index.
+
 ### Singleton pattern
 
-`utils.py:singleton(key)` caches zero-arg factory results in a module-level registry. Used by `get_embeddings()` (`vectorstore.py`), `get_llm()` (`qa_chain.py`), and `get_cross_encoder()` (`retrievers.py`). Call `utils.reset_singletons(*keys)` to invalidate cached models (e.g., after rebuilding the vectorstore via Streamlit).
+`utils.py:singleton(key)` caches zero-arg factory results in a module-level registry. Used by `get_embeddings()` (`vectorstore.py`) and `get_llm()` (`qa_chain.py`). Call `utils.reset_singletons(*keys)` to invalidate cached models (e.g., after rebuilding the vectorstore via Streamlit).
+
+Note: `get_cross_encoder()` (`retrievers.py`) does **not** use the `@singleton` decorator — it uses a module-level `_cross_encoder` global instead.
 
 ### Chunking strategy
 
@@ -32,7 +43,7 @@ RAG pipeline: document ingestion → text chunking → embedding → FAISS vecto
 
 ### API provider
 
-Despite the env var name `OPENAI_API_KEY`, the project uses **Alibaba DashScope** in OpenAI-compatible mode (`BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1`). LLM is `ChatTongyi(qwen-plus)`, embeddings are `DashScopeEmbeddings(text-embedding-v4)`.
+Despite the env var name `OPENAI_API_KEY`, the project uses **Alibaba DashScope** in OpenAI-compatible mode (`BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1`). LLM is `ChatTongyi(qwen-plus)`, embeddings are `DashScopeEmbeddings(text-embedding-v1)`.
 
 ### Streamlit app flow
 
