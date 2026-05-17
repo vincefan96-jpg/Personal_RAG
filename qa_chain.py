@@ -7,6 +7,7 @@ from langchain_core.prompts import PromptTemplate
 from langchain_community.chat_models.tongyi import ChatTongyi
 from langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
+from langchain_core.outputs import ChatGenerationChunk
 
 from retrievers import HybridRetriever, get_cross_encoder
 from utils import singleton
@@ -70,3 +71,42 @@ def build_qa_chain(vectorstore: FAISS, chunks: List[Document], top_k: int = 4):
         chain_type_kwargs={"prompt": prompt},
     )
     return chain
+
+
+def stream_qa(query: str, vectorstore: FAISS, chunks: List[Document], top_k: int = 4):
+    llm = get_llm()
+
+    vector_retriever = vectorstore.as_retriever(
+        search_type="similarity",
+        search_kwargs={"k": top_k * 2},
+    )
+
+    from langchain_community.retrievers import BM25Retriever
+    bm25_retriever = BM25Retriever.from_documents(chunks)
+    bm25_retriever.k = top_k * 2
+
+    reranker = get_cross_encoder()
+
+    retriever = HybridRetriever(
+        vector_retriever=vector_retriever,
+        bm25_retriever=bm25_retriever,
+        reranker=reranker,
+        hybrid_k=top_k * 3,
+        final_k=top_k,
+    )
+
+    docs = retriever.get_relevant_documents(query)
+
+    context = "\n\n".join(doc.page_content for doc in docs)
+    prompt_text = PROMPT_TEMPLATE.format(context=context, question=query)
+
+    def generate():
+        for chunk in llm.stream(prompt_text):
+            if isinstance(chunk, ChatGenerationChunk):
+                yield chunk.content
+            elif hasattr(chunk, "content"):
+                yield chunk.content
+            else:
+                yield str(chunk)
+
+    return generate(), docs
