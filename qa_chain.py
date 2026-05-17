@@ -94,7 +94,7 @@ def stream_qa(query: str, vectorstore: FAISS, chunks: List[Document], top_k: int
         final_k=top_k,
     )
 
-    docs = retriever.get_relevant_documents(query)
+    docs = retriever.invoke(query)
 
     context = "\n\n".join(doc.page_content for doc in docs)
     prompt_text = PROMPT_TEMPLATE.format(context=context, question=query)
