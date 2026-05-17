@@ -7,7 +7,6 @@ from langchain_core.prompts import PromptTemplate
 from langchain_community.chat_models.tongyi import ChatTongyi
 from langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
-from langchain_core.outputs import ChatGenerationChunk
 
 from retrievers import HybridRetriever, get_cross_encoder
 from utils import singleton
@@ -102,9 +101,7 @@ def stream_qa(query: str, vectorstore: FAISS, chunks: List[Document], top_k: int
 
     def generate():
         for chunk in llm.stream(prompt_text):
-            if isinstance(chunk, ChatGenerationChunk):
-                yield chunk.content
-            elif hasattr(chunk, "content"):
+            if hasattr(chunk, "content"):
                 yield chunk.content
             else:
                 yield str(chunk)
