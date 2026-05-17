@@ -32,6 +32,7 @@ def get_llm() -> ChatTongyi:
         model="qwen-plus",
         api_key=os.getenv("OPENAI_API_KEY"),
         temperature=0,
+        streaming=True,
     )
 
 
