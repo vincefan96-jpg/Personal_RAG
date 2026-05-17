@@ -15,9 +15,9 @@ VECTORSTORE_PATH = "vectorstore"
 
 @singleton("embeddings")
 def get_embeddings() -> DashScopeEmbeddings:
-    logger.info("初始化 DashScope embeddings (text-embedding-v4)")
+    logger.info("初始化 DashScope embeddings (qwen3-vl-embedding)")
     return DashScopeEmbeddings(
-        model="text-embedding-v4",
+        model="qwen3-vl-embedding",
         dashscope_api_key=os.getenv("OPENAI_API_KEY"),
     )
 
