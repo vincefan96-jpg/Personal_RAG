@@ -5,7 +5,7 @@ import logging
 import streamlit as st
 from ingest import load_documents, split_documents
 from vectorstore import build_vectorstore, load_vectorstore, VECTORSTORE_PATH, get_embeddings
-from qa_chain import build_qa_chain, get_llm
+from qa_chain import build_qa_chain, stream_qa, get_llm
 from retrievers import get_cross_encoder
 from utils import reset_singletons
 
@@ -47,6 +47,10 @@ def initialize_session_state():
         st.session_state.messages = []
     if "chain" not in st.session_state:
         st.session_state.chain = None
+    if "vectorstore" not in st.session_state:
+        st.session_state.vectorstore = None
+    if "chunks" not in st.session_state:
+        st.session_state.chunks = None
 
 
 def add_files_to_knowledge_base(uploaded_files):
@@ -103,11 +107,20 @@ def add_files_to_knowledge_base(uploaded_files):
             st.cache_resource.clear()
 
             st.success(f"✅ 成功添加 {len(saved_files)} 个文件，新增 {len(chunks)} 个片段！")
+
+            # Refresh session_state
+            new_vs, new_chunks = load_vectorstore()
+            st.session_state.vectorstore = new_vs
+            st.session_state.chunks = new_chunks
         else:
             with st.spinner("🔢 首次构建向量库..."):
                 build_vectorstore(chunks)
                 st.cache_resource.clear()
                 st.success(f"✅ 向量库已创建，共 {len(chunks)} 个片段！")
+
+                new_vs, new_chunks = load_vectorstore()
+                st.session_state.vectorstore = new_vs
+                st.session_state.chunks = new_chunks
 
         return True
 
@@ -128,7 +141,7 @@ def display_chat_history():
                         st.markdown(f"**来源 {i}:** {source}")
 
 
-def handle_user_input(chain):
+def handle_user_input():
     if user_input := st.chat_input("请输入您的问题..."):
         st.session_state.messages.append({
             "role": "user",
@@ -139,36 +152,50 @@ def handle_user_input(chain):
             st.markdown(user_input)
 
         with st.chat_message("assistant"):
-            with st.spinner("🤔 正在思考..."):
+            with st.spinner("🤔 正在检索..."):
                 try:
-                    result = chain.invoke({"query": user_input})
-                    answer = result["result"]
-                    sources = list(set(
-                        doc.metadata.get("source", "未知")
-                        for doc in result["source_documents"]
-                    ))
-
-                    st.markdown(answer)
-
-                    if sources:
-                        with st.expander("📎 查看来源文档"):
-                            for i, source in enumerate(sources, 1):
-                                st.markdown(f"**来源 {i}:** {source}")
-
-                    st.session_state.messages.append({
-                        "role": "assistant",
-                        "content": answer,
-                        "sources": sources,
-                    })
-
+                    token_gen, source_docs = stream_qa(
+                        user_input,
+                        st.session_state.vectorstore,
+                        st.session_state.chunks,
+                    )
                 except Exception as e:
-                    logger.exception("问答处理失败")
-                    error_msg = f"❌ 发生错误: {str(e)}"
+                    logger.exception("检索失败")
+                    error_msg = f"❌ 检索失败: {str(e)}"
                     st.error(error_msg)
                     st.session_state.messages.append({
                         "role": "assistant",
                         "content": error_msg,
                     })
+                    return
+
+            # Streaming phase
+            answer_placeholder = st.empty()
+            full_answer = ""
+            try:
+                for token in token_gen:
+                    full_answer += token
+                    answer_placeholder.markdown(full_answer + "▌")
+            except Exception as e:
+                logger.exception("流式生成中断")
+                full_answer += f"\n\n❌ 生成中断: {str(e)}"
+            finally:
+                answer_placeholder.markdown(full_answer)
+
+            sources = list(set(
+                doc.metadata.get("source", "未知") for doc in source_docs
+            ))
+
+            if sources:
+                with st.expander("📎 查看来源文档"):
+                    for i, source in enumerate(sources, 1):
+                        st.markdown(f"**来源 {i}:** {source}")
+
+            st.session_state.messages.append({
+                "role": "assistant",
+                "content": full_answer,
+                "sources": sources,
+            })
 
 
 def warmup_models():
@@ -264,13 +291,16 @@ def main():
 
     vectorstore, chunks = result
 
+    st.session_state.vectorstore = vectorstore
+    st.session_state.chunks = chunks
+
     chain = create_qa_chain(vectorstore, chunks)
 
     st.markdown("### 💬 开始对话")
     st.markdown("您可以询问关于知识库中的任何问题，我会基于提供的文档给您回答。")
 
     display_chat_history()
-    handle_user_input(chain)
+    handle_user_input()
 
 
 if __name__ == "__main__":
