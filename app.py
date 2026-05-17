@@ -5,7 +5,7 @@ import logging
 import streamlit as st
 from ingest import load_documents, split_documents
 from vectorstore import build_vectorstore, load_vectorstore, VECTORSTORE_PATH, get_embeddings
-from qa_chain import build_qa_chain, stream_qa, get_llm
+from qa_chain import stream_qa, get_llm
 from retrievers import get_cross_encoder
 from utils import reset_singletons
 
@@ -37,16 +37,9 @@ def init_knowledge_base(docs_path: str):
         return load_vectorstore()
 
 
-@st.cache_resource
-def create_qa_chain(_vectorstore, _chunks):
-    return build_qa_chain(_vectorstore, _chunks)
-
-
 def initialize_session_state():
     if "messages" not in st.session_state:
         st.session_state.messages = []
-    if "chain" not in st.session_state:
-        st.session_state.chain = None
     if "vectorstore" not in st.session_state:
         st.session_state.vectorstore = None
     if "chunks" not in st.session_state:
@@ -293,8 +286,6 @@ def main():
 
     st.session_state.vectorstore = vectorstore
     st.session_state.chunks = chunks
-
-    chain = create_qa_chain(vectorstore, chunks)
 
     st.markdown("### 💬 开始对话")
     st.markdown("您可以询问关于知识库中的任何问题，我会基于提供的文档给您回答。")
