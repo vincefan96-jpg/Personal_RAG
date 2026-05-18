@@ -1,4 +1,5 @@
 import os
+import sys
 import logging
 
 from knowledge_base import init_knowledge_base
@@ -35,6 +36,7 @@ def chat(chain):
 
 
 if __name__ == "__main__":
+    sys.stdout.reconfigure(encoding="utf-8")
     if not os.path.exists(VECTORSTORE_PATH):
         vectorstore, chunks = init_knowledge_base("./docs")
     else:
