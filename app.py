@@ -4,9 +4,9 @@ import logging
 
 import streamlit as st
 from ingest import load_documents, split_documents
-from vectorstore import build_vectorstore, load_vectorstore, VECTORSTORE_PATH, get_embeddings
+from retrieval import build_vectorstore, load_vectorstore, get_embeddings, get_cross_encoder
 from qa_chain import stream_qa, get_llm
-from retrievers import get_cross_encoder
+from config import VECTORSTORE_PATH
 from utils import reset_singletons
 
 logging.basicConfig(

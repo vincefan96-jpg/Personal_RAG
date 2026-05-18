@@ -6,11 +6,10 @@ from langchain_community.embeddings import DashScopeEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
 
+from config import VECTORSTORE_PATH
 from utils import singleton, retry
 
 logger = logging.getLogger("rag")
-
-VECTORSTORE_PATH = "vectorstore"
 
 
 @singleton("embeddings")

@@ -8,7 +8,7 @@ from langchain_community.chat_models.tongyi import ChatTongyi
 from langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
 
-from retrievers import HybridRetriever, get_cross_encoder
+from retrieval import HybridRetriever, get_cross_encoder
 from utils import singleton
 
 logger = logging.getLogger("rag")

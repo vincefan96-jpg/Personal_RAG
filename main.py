@@ -2,7 +2,8 @@ import os
 import logging
 
 from ingest import load_documents, split_documents
-from vectorstore import build_vectorstore, load_vectorstore, VECTORSTORE_PATH
+from retrieval import build_vectorstore, load_vectorstore
+from config import VECTORSTORE_PATH
 from qa_chain import build_qa_chain
 
 logging.basicConfig(
