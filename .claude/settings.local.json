@@ -28,7 +28,10 @@
       "Skill(superpowers:subagent-driven-development)",
       "Bash(git init *)",
       "Bash(git add *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Bash(git *)",
+      "Bash(D:/RAG/.venv/Scripts/python.exe *)",
+      "Bash(.venv/Scripts/python *)"
     ]
   }
 }
