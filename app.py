@@ -3,9 +3,9 @@ import shutil
 import logging
 
 import streamlit as st
-from ingest import load_documents, split_documents
-from retrieval import build_vectorstore, load_vectorstore, get_embeddings, get_cross_encoder
-from qa_chain import stream_qa, get_llm
+from knowledge_base import warmup_models, init_knowledge_base, add_files_to_knowledge_base
+from qa_chain import stream_qa
+from retrieval import load_vectorstore
 from config import VECTORSTORE_PATH
 from utils import reset_singletons
 
@@ -22,19 +22,10 @@ st.set_page_config(
 )
 
 
+
 @st.cache_resource
-def init_knowledge_base(docs_path: str):
-    if not os.path.exists(VECTORSTORE_PATH):
-        docs = load_documents(docs_path)
-        chunks = split_documents(docs)
-
-        if not chunks:
-            return None
-
-        vectorstore, chunks = build_vectorstore(chunks)
-        return vectorstore, chunks
-    else:
-        return load_vectorstore()
+def _cached_init_kb(docs_path: str):
+    return init_knowledge_base(docs_path)
 
 
 def initialize_session_state():
@@ -45,82 +36,6 @@ def initialize_session_state():
     if "chunks" not in st.session_state:
         st.session_state.chunks = None
 
-
-def add_files_to_knowledge_base(uploaded_files):
-    if not uploaded_files:
-        return False
-
-    docs_dir = "./docs"
-    os.makedirs(docs_dir, exist_ok=True)
-
-    saved_files = []
-    try:
-        for uploaded_file in uploaded_files:
-            file_path = os.path.join(docs_dir, uploaded_file.name)
-            with open(file_path, "wb") as f:
-                f.write(uploaded_file.getbuffer())
-            saved_files.append(file_path)
-
-        with st.spinner("📂 正在加载上传的文档..."):
-            docs = []
-            for file_path in saved_files:
-                fname = os.path.basename(file_path)
-                if fname.endswith(".pdf"):
-                    from langchain_community.document_loaders import PyPDFLoader
-                    docs += PyPDFLoader(file_path).load()
-                elif fname.endswith(".docx"):
-                    from langchain_community.document_loaders import Docx2txtLoader
-                    docs += Docx2txtLoader(file_path).load()
-                elif fname.endswith(".txt") or fname.endswith(".md"):
-                    from langchain_community.document_loaders import TextLoader
-                    docs += TextLoader(file_path, encoding="utf-8").load()
-
-            if not docs:
-                st.error("❌ 无法解析上传的文件")
-                return False
-
-        with st.spinner(f"✂️ 正在切分文本... (共 {len(docs)} 个文档)"):
-            chunks = split_documents(docs)
-
-        if not chunks:
-            st.error("❌ 文档片段为空")
-            return False
-
-        if os.path.exists(VECTORSTORE_PATH):
-            with st.spinner("📦 加载现有向量库..."):
-                existing_vectorstore, _ = load_vectorstore()
-
-            with st.spinner("🔢 构建新文档的向量..."):
-                new_vectorstore, _ = build_vectorstore(chunks)
-
-            with st.spinner("🔄 合并向量库..."):
-                existing_vectorstore.merge_from(new_vectorstore)
-                existing_vectorstore.save_local(VECTORSTORE_PATH)
-
-            st.cache_resource.clear()
-
-            st.success(f"✅ 成功添加 {len(saved_files)} 个文件，新增 {len(chunks)} 个片段！")
-
-            # Refresh session_state
-            new_vs, new_chunks = load_vectorstore()
-            st.session_state.vectorstore = new_vs
-            st.session_state.chunks = new_chunks
-        else:
-            with st.spinner("🔢 首次构建向量库..."):
-                build_vectorstore(chunks)
-                st.cache_resource.clear()
-                st.success(f"✅ 向量库已创建，共 {len(chunks)} 个片段！")
-
-                new_vs, new_chunks = load_vectorstore()
-                st.session_state.vectorstore = new_vs
-                st.session_state.chunks = new_chunks
-
-        return True
-
-    except Exception as e:
-        logger.exception("文档上传处理失败")
-        st.error(f"❌ 处理失败: {str(e)}")
-        return False
 
 
 def display_chat_history():
@@ -191,17 +106,6 @@ def handle_user_input():
             })
 
 
-def warmup_models():
-    """Pre-load all singletons to avoid lazy-init latency on first request."""
-    try:
-        logger.info("预加载模型...")
-        get_embeddings()
-        get_cross_encoder()
-        get_llm()
-        logger.info("模型预加载完成")
-    except Exception as e:
-        logger.warning("模型预加载部分失败 (将延迟初始化): %s", e)
-
 
 def main():
     st.title("🤖 RAG 知识库助手")
@@ -240,10 +144,19 @@ def main():
 
                 if st.button("📤 添加到知识库", use_container_width=True, type="primary"):
                     with st.spinner("⏳ 正在处理文档..."):
-                        success = add_files_to_knowledge_base(uploaded_files)
-                    if success:
+                        result = add_files_to_knowledge_base(uploaded_files)
+                    if result["success"]:
+                        st.cache_resource.clear()
                         st.session_state.upload_success = True
+                        st.success(f"✅ 成功添加 {result['files']} 个文件，新增 {result['chunks']} 个片段！")
+
+                        new_vs, new_chunks = load_vectorstore()
+                        st.session_state.vectorstore = new_vs
+                        st.session_state.chunks = new_chunks
+
                         st.rerun()
+                    else:
+                        st.error(f"❌ {result['error']}")
 
         st.markdown("---")
         st.markdown("### 📊 系统信息")
@@ -272,13 +185,13 @@ def main():
 
     if not os.path.exists(VECTORSTORE_PATH):
         with st.spinner("🔢 正在构建向量库，请稍候..."):
-            result = init_knowledge_base(docs_path)
+            result = _cached_init_kb(docs_path)
         if result is not None:
             _, chunks = result
             st.success(f"✅ 向量库构建成功！共 {len(chunks)} 个片段")
     else:
         with st.spinner("📦 加载已有向量库..."):
-            result = init_knowledge_base(docs_path)
+            result = _cached_init_kb(docs_path)
     if result is None:
         st.error("❌ 知识库初始化失败")
         return
