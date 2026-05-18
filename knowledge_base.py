@@ -9,7 +9,6 @@ from ingest import load_documents, split_documents, load_files
 from retrieval import build_vectorstore, load_vectorstore, get_embeddings, get_cross_encoder
 from qa_chain import get_llm
 from config import VECTORSTORE_PATH
-from utils import reset_singletons
 
 logger = logging.getLogger("rag")
 
