@@ -5,4 +5,4 @@ __pycache__/
 vectorstore/
 .claude/
 superpowers/
-docs/superpowers/
+docs/
