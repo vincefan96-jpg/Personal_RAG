@@ -1,32 +1,16 @@
 import os
 import logging
 
-from ingest import load_documents, split_documents
-from retrieval import build_vectorstore, load_vectorstore
-from config import VECTORSTORE_PATH
+from knowledge_base import init_knowledge_base
+from retrieval import load_vectorstore
 from qa_chain import build_qa_chain
+from config import VECTORSTORE_PATH
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
 logger = logging.getLogger("rag")
-
-
-def init_knowledge_base(docs_path: str):
-    logger.info("加载文档...")
-    docs = load_documents(docs_path)
-    logger.info("加载到 %d 个文档对象", len(docs))
-
-    logger.info("切分文本...")
-    chunks = split_documents(docs)
-    logger.info("切分后 %d 个 chunk", len(chunks))
-
-    if not chunks:
-        raise ValueError("chunks 为空，请检查文档路径和格式")
-
-    vectorstore, _ = build_vectorstore(chunks)
-    return vectorstore, chunks
 
 
 def chat(chain):
