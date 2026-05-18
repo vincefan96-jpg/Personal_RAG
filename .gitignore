@@ -2,6 +2,7 @@ __pycache__/
 *.pyc
 .idea/
 .env
-vectorstore/index.faiss
-vectorstore/index.pkl
-.claude/settings.local.json
+vectorstore/
+.claude/
+superpowers/
+docs/superpowers/
