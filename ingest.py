@@ -12,16 +12,34 @@ import config
 logger = logging.getLogger("rag")
 
 
+def _get_loader(fpath: str):
+    """根据文件扩展名返回对应 LangChain loader，不支持则返回 None。"""
+    if fpath.endswith(".pdf"):
+        return PyPDFLoader(fpath)
+    elif fpath.endswith(".docx"):
+        return Docx2txtLoader(fpath)
+    elif fpath.endswith(".txt") or fpath.endswith(".md"):
+        return TextLoader(fpath, encoding="utf-8")
+    return None
+
+
 def load_documents(path: str) -> List[Document]:
     docs = []
     for fname in os.listdir(path):
         fpath = os.path.join(path, fname)
-        if fname.endswith(".pdf"):
-            docs += PyPDFLoader(fpath).load()
-        elif fname.endswith(".docx"):
-            docs += Docx2txtLoader(fpath).load()
-        elif fname.endswith(".txt") or fname.endswith(".md"):
-            docs += TextLoader(fpath, encoding="utf-8").load()
+        loader = _get_loader(fpath)
+        if loader:
+            docs.extend(loader.load())
+    return docs
+
+
+def load_files(file_paths: List[str]) -> List[Document]:
+    """加载指定文件路径列表（用于上传流程，而非扫描目录）。"""
+    docs = []
+    for fpath in file_paths:
+        loader = _get_loader(fpath)
+        if loader:
+            docs.extend(loader.load())
     return docs
 
 
