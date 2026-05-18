@@ -8,6 +8,8 @@ from langchain_community.chat_models.tongyi import ChatTongyi
 from langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
 
+from langchain_community.retrievers import BM25Retriever
+
 from retrieval import HybridRetriever, get_cross_encoder
 from utils import singleton
 
@@ -36,27 +38,27 @@ def get_llm() -> ChatTongyi:
     )
 
 
-def build_qa_chain(vectorstore: FAISS, chunks: List[Document], top_k: int = 4):
-    llm = get_llm()
-
+def _build_hybrid_retriever(vectorstore: FAISS, chunks: List[Document], top_k: int = 4) -> HybridRetriever:
     vector_retriever = vectorstore.as_retriever(
         search_type="similarity",
         search_kwargs={"k": top_k * 2},
     )
-
-    from langchain_community.retrievers import BM25Retriever
     bm25_retriever = BM25Retriever.from_documents(chunks)
     bm25_retriever.k = top_k * 2
-
     reranker = get_cross_encoder()
-
-    retriever = HybridRetriever(
+    return HybridRetriever(
         vector_retriever=vector_retriever,
         bm25_retriever=bm25_retriever,
         reranker=reranker,
         hybrid_k=top_k * 3,
         final_k=top_k,
     )
+
+
+def build_qa_chain(vectorstore: FAISS, chunks: List[Document], top_k: int = 4):
+    llm = get_llm()
+
+    retriever = _build_hybrid_retriever(vectorstore, chunks, top_k)
 
     prompt = PromptTemplate(
         template=PROMPT_TEMPLATE,
@@ -76,24 +78,7 @@ def build_qa_chain(vectorstore: FAISS, chunks: List[Document], top_k: int = 4):
 def stream_qa(query: str, vectorstore: FAISS, chunks: List[Document], top_k: int = 4):
     llm = get_llm()
 
-    vector_retriever = vectorstore.as_retriever(
-        search_type="similarity",
-        search_kwargs={"k": top_k * 2},
-    )
-
-    from langchain_community.retrievers import BM25Retriever
-    bm25_retriever = BM25Retriever.from_documents(chunks)
-    bm25_retriever.k = top_k * 2
-
-    reranker = get_cross_encoder()
-
-    retriever = HybridRetriever(
-        vector_retriever=vector_retriever,
-        bm25_retriever=bm25_retriever,
-        reranker=reranker,
-        hybrid_k=top_k * 3,
-        final_k=top_k,
-    )
+    retriever = _build_hybrid_retriever(vectorstore, chunks, top_k)
 
     docs = retriever.invoke(query)
 
